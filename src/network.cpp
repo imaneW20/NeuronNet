@@ -128,3 +128,97 @@ void Network::print_traj(const int time, const std::map<std::string, size_t> &_n
             }
     (*_out) << std::endl;
 }
+std::pair<size_t, double> Network::degree(const size_t &n) const{
+	
+	linkmap::const_iterator itr;
+    size_t nb_link(0);
+    double intensity(0.0);
+    
+	for (itr = links.cbegin(); itr != links.cend(); ++itr) { 
+		
+       std::pair<size_t, size_t> a(itr->first);
+       
+       if (a.first == n)  {
+		   
+       ++nb_link;
+       intensity += itr->second;
+      
+		   }   
+    }
+     std::pair<size_t, double> b (nb_link , intensity);
+     return b;
+	}
+	
+
+	std::vector<std::pair<size_t, double> > Network::neighbors(const size_t &n) const
+{
+	 std::vector<std::pair<size_t, double> > tab_neu;
+	
+        std::pair<size_t, size_t> receiving (n,0);
+	     auto link = links.lower_bound(receiving);
+	    size_t index (0);
+        while(link -> first.first == n and index < neurons.size())
+        {      
+			  std::pair<size_t, size_t>  index_intensity(index, link->second);
+				tab_neu.push_back(index_intensity); 
+				++link;
+				++index;
+	    }
+					
+
+	return tab_neu;
+	}
+ std::set<size_t> Network::step(const std::vector<double> &input_th) // remet à jour l'input ?
+ {   
+	 
+	 std::set<size_t> ind_firing;
+	 std::vector<bool> bool_firing_neuro (neurons.size());
+	 double somme_inhib(0.0);
+	 double somme_exit(0.0);
+	 double courant(0.0);
+	 
+      	 for(size_t i(0); i<neurons.size(); ++i)
+      	 {    
+		
+		
+		if (neurons[i].firing()) {
+			ind_firing.insert(i);
+			bool_firing_neuro.push_back(true);
+			neurons[i].reset();
+		} else {
+			bool_firing_neuro.push_back(false);
+		}
+			
+		for (auto const& neighbor : neighbors(i)) {
+				
+				if (bool_firing_neuro[neighbor.first]) {
+				
+					if (neurons[neighbor.first].firing()) {
+						somme_inhib+=neighbor.second;
+					} else {
+					somme_exit += neighbor.second;
+					}
+				}
+			}
+			
+		if (neurons[i].is_inhibitory()) {
+				courant = 0.4*input_th[i] + somme_inhib + 0.5*somme_exit;
+			} else {
+				courant = input_th[i] +somme_inhib + 0.5*somme_exit;
+			}
+			
+	neurons[i].input(courant);	
+	neurons[i].step();
+
+	}
+			
+return ind_firing;
+		
+		
+			 
+}
+
+			                          
+			                          
+	 
+
